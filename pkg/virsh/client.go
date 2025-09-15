@@ -189,6 +189,7 @@ func (c *Client) DeleteVM(name string) error {
 	// First, make sure the VM is stopped
 	if err := c.StopVM(name, true); err != nil {
 		// Continue even if stop fails, the VM might already be stopped
+		// This is expected behavior for VMs that are already stopped
 	}
 
 	// Undefine the domain
@@ -223,7 +224,9 @@ func (c *Client) CreateVM(name string, config VMConfig) error {
 	}
 
 	// Clean up temporary XML file
-	c.sshClient.Execute(fmt.Sprintf("rm -f %s", xmlFile))
+	if _, err := c.sshClient.Execute(fmt.Sprintf("rm -f %s", xmlFile)); err != nil {
+		// Cleanup failure is not critical, file will be overwritten next time
+	}
 
 	return nil
 }

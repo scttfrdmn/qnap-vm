@@ -37,6 +37,12 @@ jobs:
         go fmt ./...
         go vet ./...
 
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: latest
+        args: --timeout=5m
+
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out ./...
 

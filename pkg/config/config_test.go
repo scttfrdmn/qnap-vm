@@ -108,12 +108,22 @@ func TestConfigFileOperations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Warning: failed to cleanup temp dir: %v", err)
+		}
+	}()
 
 	// Override config path for test
 	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", originalHome)
+	if err := os.Setenv("HOME", tmpDir); err != nil {
+		t.Fatalf("Failed to set HOME env var: %v", err)
+	}
+	defer func() {
+		if err := os.Setenv("HOME", originalHome); err != nil {
+			t.Logf("Warning: failed to restore HOME env var: %v", err)
+		}
+	}()
 
 	// Create config file
 	configFile := &ConfigFile{

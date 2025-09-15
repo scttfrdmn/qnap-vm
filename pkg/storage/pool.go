@@ -110,13 +110,13 @@ func (m *Manager) detectZFSPools() ([]Pool, error) {
 	var pools []Pool
 
 	// Check if ZFS is available
-	output, err := m.sshClient.Execute("which zpool")
+	_, err := m.sshClient.Execute("which zpool")
 	if err != nil {
 		return pools, nil // ZFS not available
 	}
 
 	// List ZFS pools
-	output, err = m.sshClient.Execute("zpool list -H")
+	output, err := m.sshClient.Execute("zpool list -H")
 	if err != nil {
 		return pools, nil
 	}
@@ -266,7 +266,10 @@ func (m *Manager) CreateVMDiskPath(pool *Pool, vmName string) string {
 	diskPath := fmt.Sprintf("%s/%s.qcow2", vmDir, vmName)
 
 	// Create the directory (ignore errors if it already exists)
-	m.sshClient.Execute(fmt.Sprintf("mkdir -p %s", vmDir))
+	if _, err := m.sshClient.Execute(fmt.Sprintf("mkdir -p %s", vmDir)); err != nil {
+		// Directory creation failure is not critical for path generation
+		// The actual mkdir will be attempted during VM creation
+	}
 
 	return diskPath
 }

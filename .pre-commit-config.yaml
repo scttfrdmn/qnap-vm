@@ -33,3 +33,27 @@ repos:
         args: [mod, tidy]
         files: go\.mod$
         pass_filenames: false
+
+      - id: golangci-lint
+        name: golangci-lint
+        entry: golangci-lint
+        language: system
+        args: [run, --fix]
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-test
+        name: go test
+        entry: go
+        language: system
+        args: [test, -race, -short, ./...]
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-reportcard-check
+        name: go reportcard quality check
+        entry: bash
+        language: system
+        args: [-c, 'echo "Checking Go Report Card quality standards..." && go fmt ./... && go vet ./... && go test ./... && echo "✅ All Go Report Card checks passed!"']
+        files: \.go$
+        pass_filenames: false

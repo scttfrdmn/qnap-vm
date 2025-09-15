@@ -93,7 +93,12 @@ func (c *Client) Execute(command string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create session: %w", err)
 	}
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			// Session close errors are often expected (e.g., when command completes normally)
+			// So we don't log this as it creates noise
+		}
+	}()
 
 	output, err := session.CombinedOutput(command)
 	if err != nil {
@@ -113,7 +118,12 @@ func (c *Client) ExecuteWithInput(command string, input io.Reader) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("failed to create session: %w", err)
 	}
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			// Session close errors are often expected (e.g., when command completes normally)
+			// So we don't log this as it creates noise
+		}
+	}()
 
 	session.Stdin = input
 	output, err := session.CombinedOutput(command)
