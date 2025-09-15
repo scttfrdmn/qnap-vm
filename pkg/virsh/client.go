@@ -316,7 +316,7 @@ func (c *Client) parseVMList(output string) ([]VMInfo, error) {
 			headerFound = true
 			continue
 		}
-		if headerFound && line != "" && !strings.HasPrefix(line, "-") {
+		if headerFound && line != "" && !strings.Contains(line, "---") {
 			dataLines = append(dataLines, line)
 		}
 	}

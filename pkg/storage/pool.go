@@ -342,7 +342,7 @@ func parseSize(sizeStr string) int64 {
 // extractUSBDeviceName extracts device name from USB mount point
 func extractUSBDeviceName(mountPoint string) string {
 	parts := strings.Split(mountPoint, "/")
-	if len(parts) > 0 {
+	if len(parts) > 0 && parts[len(parts)-1] != "" {
 		return parts[len(parts)-1]
 	}
 	return "unknown"
