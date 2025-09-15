@@ -11,7 +11,7 @@ all: build
 # Build the binary
 .PHONY: build
 build:
-	go build ${LDFLAGS} -o bin/${BINARY_NAME} ./cmd/${BINARY_NAME}
+	go build ${LDFLAGS} -o bin/${BINARY_NAME} .
 
 # Build for all platforms
 .PHONY: build-all
@@ -22,7 +22,7 @@ build-all:
 		OUTPUT_NAME=${BINARY_NAME}-$$OS-$$ARCH; \
 		if [ "$$OS" = "windows" ]; then OUTPUT_NAME=$$OUTPUT_NAME.exe; fi; \
 		echo "Building $$OUTPUT_NAME..."; \
-		GOOS=$$OS GOARCH=$$ARCH go build ${LDFLAGS} -o bin/$$OUTPUT_NAME ./cmd/${BINARY_NAME}; \
+		GOOS=$$OS GOARCH=$$ARCH go build ${LDFLAGS} -o bin/$$OUTPUT_NAME .; \
 	done
 
 # Run tests
