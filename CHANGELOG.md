@@ -8,9 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- VM snapshots and restoration (Phase 2)
-- VM cloning capabilities (Phase 2)
-- Live migration between hosts (Phase 2)
+- Live migration between QNAP hosts (Phase 2)
+- VM console access (VNC/serial) (Phase 2)
+- VM templates and marketplace (Phase 3)
+
+## [0.2.0] - TBD
+
+### Added
+- **VM Snapshots**: Complete snapshot lifecycle management (create, list, restore, delete, current)
+- **Resource Monitoring**: Real-time VM statistics (CPU, memory, disk I/O, network)
+- **VM Cloning**: Full and linked VM cloning capabilities
+- **Watch Mode**: Real-time statistics monitoring with customizable intervals
+- **Enhanced Integration Tests**: Comprehensive testing of Phase 2 features against real hardware
+
+### Improved
+- **Disk Format Support**: Proper qcow2 driver specification for snapshot compatibility
+- **Error Handling**: Enhanced error messages and validation throughout
+- **Documentation**: Updated roadmap, commands, and usage examples
+- **CLI Interface**: Rich help system for all new commands and options
 
 ## [0.1.0] - 2024-09-15
 

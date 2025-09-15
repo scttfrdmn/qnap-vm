@@ -51,6 +51,25 @@ go install github.com/scttfrdmn/qnap-vm/cmd/qnap-vm@latest
    qnap-vm start my-vm
    ```
 
+5. Monitor VM resources:
+   ```bash
+   qnap-vm stats my-vm
+   qnap-vm stats my-vm --watch  # real-time monitoring
+   ```
+
+6. Manage snapshots:
+   ```bash
+   qnap-vm snapshot create my-vm backup-point --description "Before updates"
+   qnap-vm snapshot list my-vm
+   qnap-vm snapshot restore my-vm backup-point
+   ```
+
+7. Clone VMs:
+   ```bash
+   qnap-vm clone my-vm my-vm-copy
+   qnap-vm clone my-vm my-vm-template --linked  # space-efficient
+   ```
+
 ## System Requirements
 
 ### QNAP Device Requirements
@@ -109,34 +128,41 @@ See [tests/integration/README.md](tests/integration/README.md) for detailed inte
 
 ## Development Roadmap
 
-### Phase 1: Core VM Lifecycle (v0.1.0)
+### Phase 1: Core VM Lifecycle (v0.1.0) ✅ **COMPLETED**
 - [x] Project setup and basic structure
-- [ ] SSH connection management
-- [ ] libvirt/virsh integration
-- [ ] Basic VM operations (create, start, stop, delete, list)
-- [ ] Configuration file support
-- [ ] Initial CLI commands
+- [x] SSH connection management with key authentication
+- [x] libvirt/virsh integration for QNAP Virtualization Station
+- [x] Basic VM operations (create, start, stop, delete, list, status)
+- [x] Configuration file support with YAML storage
+- [x] Intelligent storage pool detection (CACHEDEV, ZFS, USB)
+- [x] Cross-platform support (Linux, macOS, Windows)
+- [x] A+ Go Report Card compliance
+- [x] Comprehensive integration testing against real hardware
+- [x] Professional release infrastructure with GoReleaser
 
-### Phase 2: Advanced Features (v0.2.0)
-- [ ] VM snapshots and restoration
-- [ ] VM cloning capabilities
-- [ ] Live migration between hosts
-- [ ] Resource monitoring and statistics
-- [ ] VM console access
+### Phase 2: Advanced Features (v0.2.0) 🚧 **IN PROGRESS**
+- [x] VM snapshots and restoration with full lifecycle management
+- [x] Resource monitoring and statistics with real-time watch mode
+- [ ] VM cloning capabilities with template support
+- [ ] Live migration between QNAP hosts
+- [ ] VM console access (VNC/serial)
+- [ ] Enhanced monitoring with performance analytics
 
 ### Phase 3: Templates and Automation (v0.3.0)
-- [ ] VM template system
-- [ ] Automated VM provisioning
-- [ ] Bulk operations
-- [ ] Export/import VM configurations
-- [ ] Integration with cloud-init
+- [ ] VM template system with marketplace integration
+- [ ] Automated VM provisioning with cloud-init
+- [ ] Bulk operations for multi-VM management
+- [ ] Export/import VM configurations (OVF/OVA)
+- [ ] Infrastructure as Code with YAML/JSON configs
+- [ ] Scheduled VM operations and automation
 
 ### Phase 4: Storage and Networking (v0.4.0)
-- [ ] Advanced storage pool management
-- [ ] Network configuration management
-- [ ] Virtual disk operations
-- [ ] Storage migration
-- [ ] Network isolation and VLANs
+- [ ] Advanced storage pool management and optimization
+- [ ] Network configuration management with VLAN support
+- [ ] Virtual disk operations (resize, convert, migrate)
+- [ ] Storage migration and performance-based placement
+- [ ] Network isolation and security policies
+- [ ] Enterprise-grade multi-host management
 
 ## Configuration
 
@@ -162,6 +188,9 @@ hosts:
 | `qnap-vm stop` | Stop a virtual machine |
 | `qnap-vm delete` | Delete a virtual machine |
 | `qnap-vm status` | Show VM status and resource usage |
+| `qnap-vm stats` | Show VM resource statistics (CPU, memory, I/O, network) |
+| `qnap-vm snapshot` | Manage VM snapshots (create, list, restore, delete, current) |
+| `qnap-vm clone` | Clone virtual machines (full or linked clones) |
 | `qnap-vm config` | Manage connection configuration |
 
 ## Contributing

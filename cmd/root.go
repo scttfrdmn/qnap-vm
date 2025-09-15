@@ -46,6 +46,9 @@ func init() {
 		stopCmd(),
 		deleteCmd(),
 		statusCmd(),
+		snapshotCmd(),
+		statsCmd(),
+		cloneCmd(),
 		configCmd(),
 		versionCmd(),
 	)
@@ -660,4 +663,508 @@ func connectToQNAP(cfg config.Config) (*ssh.Client, *virsh.Client, error) {
 	}
 
 	return sshClient, virshClient, nil
+}
+
+func snapshotCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "snapshot",
+		Short: "Manage VM snapshots",
+		Long:  "Create, list, restore, and delete virtual machine snapshots",
+	}
+
+	// Snapshot create command
+	createSnapshotCmd := &cobra.Command{
+		Use:   "create [VM_NAME] [SNAPSHOT_NAME]",
+		Short: "Create a VM snapshot",
+		Long:  "Create a snapshot of the specified virtual machine",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			vmName := args[0]
+			snapshotName := args[1]
+			description, _ := cmd.Flags().GetString("description")
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if VM exists
+			if _, err := virshClient.GetVM(vmName); err != nil {
+				return fmt.Errorf("VM '%s' not found", vmName)
+			}
+
+			fmt.Printf("Creating snapshot '%s' for VM '%s'...\n", snapshotName, vmName)
+			if err := virshClient.CreateSnapshot(vmName, snapshotName, description); err != nil {
+				return fmt.Errorf("failed to create snapshot: %w", err)
+			}
+
+			fmt.Printf("Snapshot '%s' created successfully\n", snapshotName)
+			if description != "" {
+				fmt.Printf("Description: %s\n", description)
+			}
+
+			return nil
+		},
+	}
+
+	createSnapshotCmd.Flags().StringP("description", "d", "", "Snapshot description")
+
+	// Snapshot list command
+	listSnapshotCmd := &cobra.Command{
+		Use:   "list [VM_NAME]",
+		Short: "List VM snapshots",
+		Long:  "List all snapshots for the specified virtual machine",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			vmName := args[0]
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if VM exists
+			if _, err := virshClient.GetVM(vmName); err != nil {
+				return fmt.Errorf("VM '%s' not found", vmName)
+			}
+
+			// List snapshots
+			snapshots, err := virshClient.ListSnapshots(vmName)
+			if err != nil {
+				return fmt.Errorf("failed to list snapshots: %w", err)
+			}
+
+			if len(snapshots) == 0 {
+				fmt.Printf("No snapshots found for VM '%s'\n", vmName)
+				return nil
+			}
+
+			// Get current snapshot
+			currentSnapshot, _ := virshClient.GetCurrentSnapshot(vmName)
+
+			// Display snapshots in table format
+			fmt.Printf("Snapshots for VM '%s':\n\n", vmName)
+			fmt.Printf("%-20s %-25s %-12s %-8s %-50s\n", "NAME", "CREATION TIME", "STATE", "CURRENT", "DESCRIPTION")
+			fmt.Printf("%-20s %-25s %-12s %-8s %-50s\n", "--------------------", "-------------------------", "------------", "--------", "--------------------------------------------------")
+
+			for _, snapshot := range snapshots {
+				currentStr := ""
+				if snapshot.Name == currentSnapshot {
+					currentStr = "✓"
+				}
+
+				// Get detailed info for description
+				if detailed, err := virshClient.GetSnapshotInfo(vmName, snapshot.Name); err == nil {
+					snapshot = *detailed
+				}
+
+				description := snapshot.Description
+				if len(description) > 50 {
+					description = description[:47] + "..."
+				}
+
+				fmt.Printf("%-20s %-25s %-12s %-8s %-50s\n",
+					snapshot.Name, snapshot.CreationTime, snapshot.State, currentStr, description)
+			}
+
+			return nil
+		},
+	}
+
+	// Snapshot restore command
+	restoreSnapshotCmd := &cobra.Command{
+		Use:   "restore [VM_NAME] [SNAPSHOT_NAME]",
+		Short: "Restore VM to snapshot",
+		Long:  "Restore the specified virtual machine to a snapshot state",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			vmName := args[0]
+			snapshotName := args[1]
+			force, _ := cmd.Flags().GetBool("force")
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if VM and snapshot exist
+			if _, err := virshClient.GetVM(vmName); err != nil {
+				return fmt.Errorf("VM '%s' not found", vmName)
+			}
+
+			if _, err := virshClient.GetSnapshotInfo(vmName, snapshotName); err != nil {
+				return fmt.Errorf("snapshot '%s' not found for VM '%s'", snapshotName, vmName)
+			}
+
+			// Confirmation unless force is used
+			if !force {
+				fmt.Printf("⚠️  WARNING: Restoring VM '%s' to snapshot '%s' will lose all changes made after the snapshot.\n", vmName, snapshotName)
+				fmt.Print("Are you sure you want to continue? (y/N): ")
+				var response string
+				if _, err := fmt.Scanln(&response); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to read input: %v\n", err)
+				}
+				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+					fmt.Println("Operation cancelled")
+					return nil
+				}
+			}
+
+			fmt.Printf("Restoring VM '%s' to snapshot '%s'...\n", vmName, snapshotName)
+			if err := virshClient.RestoreSnapshot(vmName, snapshotName); err != nil {
+				return fmt.Errorf("failed to restore snapshot: %w", err)
+			}
+
+			fmt.Printf("VM '%s' restored to snapshot '%s' successfully\n", vmName, snapshotName)
+			return nil
+		},
+	}
+
+	restoreSnapshotCmd.Flags().BoolP("force", "f", false, "Force restore without confirmation")
+
+	// Snapshot delete command
+	deleteSnapshotCmd := &cobra.Command{
+		Use:   "delete [VM_NAME] [SNAPSHOT_NAME]",
+		Short: "Delete a VM snapshot",
+		Long:  "Delete the specified snapshot from a virtual machine",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			vmName := args[0]
+			snapshotName := args[1]
+			force, _ := cmd.Flags().GetBool("force")
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if VM and snapshot exist
+			if _, err := virshClient.GetVM(vmName); err != nil {
+				return fmt.Errorf("VM '%s' not found", vmName)
+			}
+
+			if _, err := virshClient.GetSnapshotInfo(vmName, snapshotName); err != nil {
+				return fmt.Errorf("snapshot '%s' not found for VM '%s'", snapshotName, vmName)
+			}
+
+			// Confirmation unless force is used
+			if !force {
+				fmt.Printf("Are you sure you want to delete snapshot '%s' from VM '%s'? (y/N): ", snapshotName, vmName)
+				var response string
+				if _, err := fmt.Scanln(&response); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to read input: %v\n", err)
+				}
+				if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+					fmt.Println("Operation cancelled")
+					return nil
+				}
+			}
+
+			fmt.Printf("Deleting snapshot '%s' from VM '%s'...\n", snapshotName, vmName)
+			if err := virshClient.DeleteSnapshot(vmName, snapshotName); err != nil {
+				return fmt.Errorf("failed to delete snapshot: %w", err)
+			}
+
+			fmt.Printf("Snapshot '%s' deleted successfully\n", snapshotName)
+			return nil
+		},
+	}
+
+	deleteSnapshotCmd.Flags().BoolP("force", "f", false, "Force delete without confirmation")
+
+	// Snapshot current command
+	currentSnapshotCmd := &cobra.Command{
+		Use:   "current [VM_NAME]",
+		Short: "Show current snapshot",
+		Long:  "Show the current snapshot for the specified virtual machine",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			vmName := args[0]
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if VM exists
+			if _, err := virshClient.GetVM(vmName); err != nil {
+				return fmt.Errorf("VM '%s' not found", vmName)
+			}
+
+			// Get current snapshot
+			currentSnapshot, err := virshClient.GetCurrentSnapshot(vmName)
+			if err != nil {
+				return fmt.Errorf("failed to get current snapshot: %w", err)
+			}
+
+			if currentSnapshot == "" {
+				fmt.Printf("VM '%s' has no current snapshot\n", vmName)
+				return nil
+			}
+
+			// Get detailed snapshot info
+			snapshotInfo, err := virshClient.GetSnapshotInfo(vmName, currentSnapshot)
+			if err != nil {
+				fmt.Printf("Current snapshot: %s\n", currentSnapshot)
+				return nil
+			}
+
+			fmt.Printf("Current snapshot for VM '%s':\n", vmName)
+			fmt.Printf("%-15s: %s\n", "Name", snapshotInfo.Name)
+			fmt.Printf("%-15s: %s\n", "Creation Time", snapshotInfo.CreationTime)
+			fmt.Printf("%-15s: %s\n", "State", snapshotInfo.State)
+			if snapshotInfo.Description != "" {
+				fmt.Printf("%-15s: %s\n", "Description", snapshotInfo.Description)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.AddCommand(createSnapshotCmd, listSnapshotCmd, restoreSnapshotCmd, deleteSnapshotCmd, currentSnapshotCmd)
+	return cmd
+}
+
+func statsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "stats [VM_NAME]",
+		Short: "Show VM resource statistics",
+		Long:  "Show detailed resource usage statistics for the specified virtual machine",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			vmName := args[0]
+			watch, _ := cmd.Flags().GetBool("watch")
+			interval, _ := cmd.Flags().GetInt("interval")
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if VM exists and is running
+			vm, err := virshClient.GetVM(vmName)
+			if err != nil {
+				return fmt.Errorf("VM '%s' not found", vmName)
+			}
+
+			if !strings.Contains(vm.State, "running") {
+				return fmt.Errorf("VM '%s' is not running (state: %s)", vmName, vm.State)
+			}
+
+			// Display stats once or in watch mode
+			if watch {
+				fmt.Printf("Watching VM '%s' statistics (press Ctrl+C to exit)\n\n", vmName)
+				for {
+					if err := displayVMStats(virshClient, vmName); err != nil {
+						return err
+					}
+					time.Sleep(time.Duration(interval) * time.Second)
+					fmt.Print("\033[H\033[2J") // Clear screen
+				}
+			} else {
+				return displayVMStats(virshClient, vmName)
+			}
+		},
+	}
+
+	cmd.Flags().BoolP("watch", "w", false, "Watch statistics in real-time")
+	cmd.Flags().IntP("interval", "i", 5, "Update interval in seconds (for watch mode)")
+
+	return cmd
+}
+
+func displayVMStats(virshClient *virsh.Client, vmName string) error {
+	stats, err := virshClient.GetVMStats(vmName)
+	if err != nil {
+		return fmt.Errorf("failed to get VM statistics: %w", err)
+	}
+
+	fmt.Printf("VM Statistics: %s\n", vmName)
+	fmt.Printf("%-20s: %s\n", "Timestamp", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Println()
+
+	// CPU Statistics
+	fmt.Printf("CPU:\n")
+	fmt.Printf("  %-18s: %d ns\n", "CPU Time", stats.CPUTime)
+
+	// Memory Statistics
+	fmt.Printf("\nMemory:\n")
+	if stats.Memory.Total > 0 {
+		fmt.Printf("  %-18s: %s\n", "Total", formatBytes(stats.Memory.Total*1024))
+		fmt.Printf("  %-18s: %s\n", "Used", formatBytes(stats.Memory.Used*1024))
+		fmt.Printf("  %-18s: %s\n", "Available", formatBytes(stats.Memory.Available*1024))
+		fmt.Printf("  %-18s: %.1f%%\n", "Usage", stats.Memory.Percent)
+	} else {
+		fmt.Printf("  %-18s: Not available\n", "Statistics")
+	}
+
+	// Block I/O Statistics
+	fmt.Printf("\nDisk I/O:\n")
+	fmt.Printf("  %-18s: %s\n", "Read", formatBytes(stats.BlockIO.ReadBytes))
+	fmt.Printf("  %-18s: %s\n", "Written", formatBytes(stats.BlockIO.WriteBytes))
+	fmt.Printf("  %-18s: %d\n", "Read Requests", stats.BlockIO.ReadReqs)
+	fmt.Printf("  %-18s: %d\n", "Write Requests", stats.BlockIO.WriteReqs)
+
+	// Network Statistics
+	fmt.Printf("\nNetwork:\n")
+	fmt.Printf("  %-18s: %s\n", "Received", formatBytes(stats.Network.RxBytes))
+	fmt.Printf("  %-18s: %s\n", "Transmitted", formatBytes(stats.Network.TxBytes))
+	fmt.Printf("  %-18s: %d\n", "RX Packets", stats.Network.RxPackets)
+	fmt.Printf("  %-18s: %d\n", "TX Packets", stats.Network.TxPackets)
+
+	return nil
+}
+
+// formatBytes formats byte values into human-readable format
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+
+	units := []string{"KB", "MB", "GB", "TB", "PB"}
+	return fmt.Sprintf("%.1f %s", float64(bytes)/float64(div), units[exp])
+}
+
+func cloneCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "clone [SOURCE_VM] [TARGET_VM]",
+		Short: "Clone a virtual machine",
+		Long:  "Clone an existing virtual machine to create a new VM with the same configuration",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			sourceVM := args[0]
+			targetVM := args[1]
+			linkedClone, _ := cmd.Flags().GetBool("linked")
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if source VM exists
+			sourceVMInfo, err := virshClient.GetVM(sourceVM)
+			if err != nil {
+				return fmt.Errorf("source VM '%s' not found", sourceVM)
+			}
+
+			// Check if target VM already exists
+			if _, err := virshClient.GetVM(targetVM); err == nil {
+				return fmt.Errorf("target VM '%s' already exists", targetVM)
+			}
+
+			cloneType := "full"
+			if linkedClone {
+				cloneType = "linked"
+			}
+
+			fmt.Printf("Cloning VM '%s' to '%s' (%s clone)...\n", sourceVM, targetVM, cloneType)
+			fmt.Printf("Source VM state: %s\n", sourceVMInfo.State)
+
+			if err := virshClient.CloneVM(sourceVM, targetVM, linkedClone); err != nil {
+				return fmt.Errorf("failed to clone VM: %w", err)
+			}
+
+			fmt.Printf("VM '%s' cloned successfully to '%s'\n", sourceVM, targetVM)
+
+			// Show the new VM info
+			if newVM, err := virshClient.GetVMDetails(targetVM); err == nil {
+				fmt.Printf("New VM details:\n")
+				fmt.Printf("  Name: %s\n", newVM.Name)
+				fmt.Printf("  State: %s\n", newVM.State)
+				fmt.Printf("  Memory: %d MB\n", newVM.Memory)
+				fmt.Printf("  CPUs: %d\n", newVM.CPUs)
+				fmt.Printf("  UUID: %s\n", newVM.UUID)
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolP("linked", "l", false, "Create a linked clone (space-efficient)")
+
+	return cmd
 }
