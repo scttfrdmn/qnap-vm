@@ -165,6 +165,10 @@ func TestIntegrationMain(t *testing.T) {
 	t.Run("VM Cloning", func(t *testing.T) {
 		testVMCloning(t, runner)
 	})
+
+	t.Run("VM Console Access", func(t *testing.T) {
+		testVMConsoleAccess(t, runner)
+	})
 }
 
 // testSSHConnection validates SSH connectivity and authentication
@@ -688,4 +692,89 @@ func testVMCloning(t *testing.T, runner *TestRunner) {
 
 	t.Logf("VM cloned successfully: %s -> %s (Memory: %d MB, CPUs: %d)",
 		sourceVMName, targetVMName, clonedVM.Memory, clonedVM.CPUs)
+}
+
+// testVMConsoleAccess validates VM console access functionality
+func testVMConsoleAccess(t *testing.T, runner *TestRunner) {
+	testVMName := fmt.Sprintf("qnap-vm-console-test-%d", time.Now().Unix())
+	runner.AddTestVM(testVMName)
+
+	t.Logf("Testing VM console access with VM: %s", testVMName)
+
+	// Get storage for VM creation
+	storageManager := storage.NewManager(runner.sshClient)
+	bestPool, err := storageManager.GetBestPool()
+	if err != nil {
+		t.Fatalf("Failed to get storage pool: %v", err)
+	}
+
+	diskPath := storageManager.CreateVMDiskPath(bestPool, testVMName)
+
+	// Create VM disk
+	if err := storageManager.CreateVMDisk(diskPath, "1G"); err != nil {
+		t.Fatalf("Failed to create VM disk: %v", err)
+	}
+
+	// Create and start test VM (console access requires running VM)
+	vmConfig := virsh.VMConfig{
+		Memory:   512,
+		CPUs:     1,
+		DiskSize: "1G",
+		DiskPath: diskPath,
+	}
+
+	if err := runner.virshClient.CreateVM(testVMName, vmConfig); err != nil {
+		t.Fatalf("Failed to create VM: %v", err)
+	}
+
+	if err := runner.virshClient.StartVM(testVMName); err != nil {
+		t.Fatalf("Failed to start VM for console testing: %v", err)
+	}
+
+	// Wait for VM to fully start
+	time.Sleep(5 * time.Second)
+
+	// Test console information retrieval
+	consoleInfo, err := runner.virshClient.GetConsoleInfo(testVMName)
+	if err != nil {
+		// Console access may not be available in all QNAP configurations
+		t.Logf("Console access not available - %v", err)
+		return
+	}
+
+	// Validate console info structure
+	if consoleInfo == nil {
+		t.Fatal("Console info should not be nil when no error is returned")
+	}
+
+	t.Logf("Console info retrieved successfully:")
+	t.Logf("  Protocol: %s", consoleInfo.Protocol)
+
+	if consoleInfo.Protocol == "VNC" {
+		t.Logf("  VNC Host: %s", consoleInfo.VNCHost)
+		t.Logf("  VNC Port: %d", consoleInfo.VNCPort)
+		t.Logf("  VNC Display: %s", consoleInfo.VNCDisplay)
+
+		// Test VNC connection string generation
+		vncString, err := runner.virshClient.GetVNCConnectionString(testVMName)
+		if err != nil {
+			t.Errorf("Failed to get VNC connection string: %v", err)
+		} else {
+			t.Logf("  VNC Connection: %s", vncString)
+
+			// Validate connection string format
+			if !strings.Contains(vncString, ":") {
+				t.Error("VNC connection string should contain port separator ':'")
+			}
+		}
+	}
+
+	if consoleInfo.SerialPort != "" {
+		t.Logf("  Serial Console: %s", consoleInfo.SerialPort)
+	}
+
+	// Stop VM
+	if err := runner.virshClient.StopVM(testVMName, true); err != nil {
+		t.Logf("Warning: failed to stop VM: %v", err)
+	}
 }

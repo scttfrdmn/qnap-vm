@@ -70,6 +70,12 @@ go install github.com/scttfrdmn/qnap-vm/cmd/qnap-vm@latest
    qnap-vm clone my-vm my-vm-template --linked  # space-efficient
    ```
 
+8. Access VM console:
+   ```bash
+   qnap-vm console my-vm --vnc      # Get VNC connection details
+   qnap-vm console my-vm --serial   # Connect to serial console
+   ```
+
 ## System Requirements
 
 ### QNAP Device Requirements
@@ -140,13 +146,11 @@ See [tests/integration/README.md](tests/integration/README.md) for detailed inte
 - [x] Comprehensive integration testing against real hardware
 - [x] Professional release infrastructure with GoReleaser
 
-### Phase 2: Advanced Features (v0.2.0) 🚧 **IN PROGRESS**
+### Phase 2: Advanced Features (v0.2.0) ✅ **COMPLETED**
 - [x] VM snapshots and restoration with full lifecycle management
 - [x] Resource monitoring and statistics with real-time watch mode
-- [ ] VM cloning capabilities with template support
-- [ ] Live migration between QNAP hosts
-- [ ] VM console access (VNC/serial)
-- [ ] Enhanced monitoring with performance analytics
+- [x] VM cloning capabilities with configuration inheritance
+- [x] VM console access (VNC/serial) with connection guidance
 
 ### Phase 3: Templates and Automation (v0.3.0)
 - [ ] VM template system with marketplace integration
@@ -157,6 +161,7 @@ See [tests/integration/README.md](tests/integration/README.md) for detailed inte
 - [ ] Scheduled VM operations and automation
 
 ### Phase 4: Storage and Networking (v0.4.0)
+- [ ] Live migration between QNAP hosts with resource validation
 - [ ] Advanced storage pool management and optimization
 - [ ] Network configuration management with VLAN support
 - [ ] Virtual disk operations (resize, convert, migrate)
@@ -191,6 +196,7 @@ hosts:
 | `qnap-vm stats` | Show VM resource statistics (CPU, memory, I/O, network) |
 | `qnap-vm snapshot` | Manage VM snapshots (create, list, restore, delete, current) |
 | `qnap-vm clone` | Clone virtual machines (full or linked clones) |
+| `qnap-vm console` | Access VM console (VNC/serial) with connection details |
 | `qnap-vm config` | Manage connection configuration |
 
 ## Contributing

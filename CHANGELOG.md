@@ -7,25 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned
-- Live migration between QNAP hosts (Phase 2)
-- VM console access (VNC/serial) (Phase 2)
-- VM templates and marketplace (Phase 3)
+### Planned for Phase 3 (v0.3.0)
+- VM template system with marketplace integration
+- Automated VM provisioning with cloud-init
+- Bulk operations for multi-VM management
+- Export/import VM configurations (OVF/OVA)
+- Infrastructure as Code with YAML/JSON configs
 
-## [0.2.0] - TBD
+### Planned for Phase 4 (v0.4.0)
+- Live migration between QNAP hosts
+- Advanced storage pool management
+- Network configuration with VLAN support
+
+## [0.2.0] - 2024-09-15
 
 ### Added
 - **VM Snapshots**: Complete snapshot lifecycle management (create, list, restore, delete, current)
 - **Resource Monitoring**: Real-time VM statistics (CPU, memory, disk I/O, network)
-- **VM Cloning**: Full and linked VM cloning capabilities
-- **Watch Mode**: Real-time statistics monitoring with customizable intervals
-- **Enhanced Integration Tests**: Comprehensive testing of Phase 2 features against real hardware
+- **VM Cloning**: Full and linked VM cloning capabilities with automatic configuration inheritance
+- **Console Access**: VNC and serial console support with connection guidance and SSH tunneling
+- **Watch Mode**: Real-time statistics monitoring with customizable refresh intervals
+- **Enhanced Integration Tests**: Comprehensive testing of all Phase 2 features against real hardware
 
 ### Improved
 - **Disk Format Support**: Proper qcow2 driver specification for snapshot compatibility
-- **Error Handling**: Enhanced error messages and validation throughout
-- **Documentation**: Updated roadmap, commands, and usage examples
-- **CLI Interface**: Rich help system for all new commands and options
+- **Error Handling**: Enhanced error messages and validation throughout all operations
+- **Documentation**: Updated roadmap, comprehensive command examples, and usage guides
+- **CLI Interface**: Rich help system for all new commands with detailed options
+- **Project Structure**: Reorganized to match qnap-docker professional standards
+
+### Technical Enhancements
+- **libvirt Integration**: Advanced virsh commands for snapshots, stats, and console access
+- **XML Configuration**: Enhanced domain XML with proper driver and emulator specifications
+- **Resource Parsing**: Sophisticated statistics parsing for comprehensive monitoring
+- **Console Detection**: Intelligent VNC and serial console discovery and configuration
 
 ## [0.1.0] - 2024-09-15
 

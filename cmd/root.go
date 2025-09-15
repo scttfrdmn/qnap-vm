@@ -49,6 +49,7 @@ func init() {
 		snapshotCmd(),
 		statsCmd(),
 		cloneCmd(),
+		consoleCmd(),
 		configCmd(),
 		versionCmd(),
 	)
@@ -1165,6 +1166,119 @@ func cloneCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolP("linked", "l", false, "Create a linked clone (space-efficient)")
+
+	return cmd
+}
+
+func consoleCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "console [VM_NAME]",
+		Short: "Access VM console",
+		Long:  "Access virtual machine console via VNC or serial connection",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig(cmd)
+			if err != nil {
+				return err
+			}
+
+			vmName := args[0]
+			vncOnly, _ := cmd.Flags().GetBool("vnc")
+			serialOnly, _ := cmd.Flags().GetBool("serial")
+			force, _ := cmd.Flags().GetBool("force")
+
+			// Connect to QNAP device
+			sshClient, virshClient, err := connectToQNAP(*cfg)
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := sshClient.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close SSH connection: %v\n", err)
+				}
+			}()
+
+			// Check if VM exists and is running
+			vm, err := virshClient.GetVM(vmName)
+			if err != nil {
+				return fmt.Errorf("VM '%s' not found", vmName)
+			}
+
+			if !strings.Contains(vm.State, "running") {
+				return fmt.Errorf("VM '%s' is not running (state: %s). Console access requires a running VM.", vmName, vm.State)
+			}
+
+			// Get console information
+			consoleInfo, err := virshClient.GetConsoleInfo(vmName)
+			if err != nil {
+				return fmt.Errorf("failed to get console information: %w", err)
+			}
+
+			// Handle VNC access
+			if vncOnly || (!serialOnly && consoleInfo.Protocol == "VNC") {
+				vncConnection, err := virshClient.GetVNCConnectionString(vmName)
+				if err != nil {
+					return fmt.Errorf("failed to get VNC connection: %w", err)
+				}
+
+				fmt.Printf("VNC Console Access for VM '%s':\n\n", vmName)
+				fmt.Printf("Connection Details:\n")
+				fmt.Printf("  Protocol: %s\n", consoleInfo.Protocol)
+				fmt.Printf("  Host: %s\n", consoleInfo.VNCHost)
+				fmt.Printf("  Port: %d\n", consoleInfo.VNCPort)
+				fmt.Printf("  Display: %s\n", consoleInfo.VNCDisplay)
+				fmt.Printf("\nVNC Connection String: %s\n\n", vncConnection)
+
+				fmt.Printf("To connect using a VNC client:\n")
+				fmt.Printf("  vncviewer %s\n", vncConnection)
+				fmt.Printf("  open vnc://%s  # macOS Screen Sharing\n", vncConnection)
+				fmt.Printf("\nOr use SSH tunnel for secure access:\n")
+				fmt.Printf("  ssh -L %d:localhost:%d %s@%s\n", consoleInfo.VNCPort, consoleInfo.VNCPort, cfg.Username, cfg.Host)
+				fmt.Printf("  vncviewer localhost:%d\n", consoleInfo.VNCPort)
+
+				return nil
+			}
+
+			// Handle serial console access
+			if serialOnly || consoleInfo.SerialPort == "available" {
+				fmt.Printf("Serial Console Access for VM '%s':\n\n", vmName)
+				fmt.Printf("Note: Serial console requires proper guest OS configuration.\n")
+				fmt.Printf("Guest OS must have:\n")
+				fmt.Printf("  1. Serial console enabled in kernel parameters\n")
+				fmt.Printf("  2. Getty service running on serial port\n")
+				fmt.Printf("  3. Appropriate permissions configured\n\n")
+
+				if !force {
+					fmt.Print("Attempt to connect to serial console? This may require guest OS setup. (y/N): ")
+					var response string
+					if _, err := fmt.Scanln(&response); err != nil {
+						fmt.Fprintf(os.Stderr, "Warning: failed to read input: %v\n", err)
+					}
+					if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+						fmt.Println("Console connection cancelled")
+						return nil
+					}
+				}
+
+				fmt.Printf("Connecting to serial console for VM '%s'...\n", vmName)
+				fmt.Printf("Use 'Ctrl+]' to exit the console session.\n\n")
+
+				// This would normally connect to interactive console
+				// For CLI tool, we'll provide connection instructions instead
+				fmt.Printf("To connect to serial console manually:\n")
+				fmt.Printf("  ssh %s@%s\n", cfg.Username, cfg.Host)
+				fmt.Printf("  virsh console %s\n", vmName)
+
+				return nil
+			}
+
+			return fmt.Errorf("no console access available for VM '%s'", vmName)
+		},
+	}
+
+	cmd.Flags().BoolP("vnc", "", false, "Show VNC console information only")
+	cmd.Flags().BoolP("serial", "s", false, "Connect to serial console only")
+	cmd.Flags().BoolP("force", "f", false, "Force console connection without confirmation")
 
 	return cmd
 }

@@ -838,3 +838,105 @@ func (c *Client) manualCloneVM(sourceVMName, targetVMName string) error {
 
 	return nil
 }
+
+// ConsoleInfo represents console connection information
+type ConsoleInfo struct {
+	VNCDisplay string `json:"vnc_display"`
+	VNCPort    int    `json:"vnc_port"`
+	VNCHost    string `json:"vnc_host"`
+	SerialPort string `json:"serial_port"`
+	Protocol   string `json:"protocol"`
+}
+
+// GetConsoleInfo gets console connection information for a VM
+func (c *Client) GetConsoleInfo(vmName string) (*ConsoleInfo, error) {
+	info := &ConsoleInfo{}
+
+	// Get VNC display information using domdisplay (modern approach)
+	domDisplayOutput, err := c.execVirsh(fmt.Sprintf("domdisplay %s", vmName))
+	if err == nil && strings.TrimSpace(domDisplayOutput) != "" {
+		uri := strings.TrimSpace(domDisplayOutput)
+		if strings.HasPrefix(uri, "vnc://") {
+			info.Protocol = "VNC"
+			// Parse VNC URI: vnc://127.0.0.1:0 or vnc://host:port
+			parts := strings.Split(strings.TrimPrefix(uri, "vnc://"), ":")
+			if len(parts) >= 2 {
+				info.VNCHost = parts[0]
+				if port, err := strconv.Atoi(parts[1]); err == nil {
+					info.VNCPort = 5900 + port // VNC display 0 = port 5900
+					info.VNCDisplay = fmt.Sprintf(":%d", port)
+				}
+			}
+		}
+	}
+
+	// Fallback to vncdisplay if domdisplay doesn't work
+	if info.Protocol == "" {
+		vncOutput, err := c.execVirsh(fmt.Sprintf("vncdisplay %s", vmName))
+		if err == nil && strings.TrimSpace(vncOutput) != "" {
+			display := strings.TrimSpace(vncOutput)
+			info.VNCDisplay = display
+			info.Protocol = "VNC"
+
+			// Parse display number (:0, :1, etc.)
+			if strings.HasPrefix(display, ":") {
+				if displayNum, err := strconv.Atoi(display[1:]); err == nil {
+					info.VNCPort = 5900 + displayNum
+					info.VNCHost = "127.0.0.1" // Default for vncdisplay
+				}
+			}
+		}
+	}
+
+	// Check for serial console availability
+	serialOutput, err := c.execVirsh(fmt.Sprintf("dominfo %s", vmName))
+	if err == nil && strings.Contains(strings.ToLower(serialOutput), "console") {
+		info.SerialPort = "available"
+	}
+
+	if info.Protocol == "" && info.SerialPort == "" {
+		return nil, fmt.Errorf("no console access available for VM '%s'", vmName)
+	}
+
+	return info, nil
+}
+
+// ConnectSerial connects to the VM's serial console
+func (c *Client) ConnectSerial(vmName string, force bool) error {
+	cmd := fmt.Sprintf("console %s", vmName)
+	if force {
+		cmd += " --force"
+	}
+
+	// Note: This will attempt to connect to the interactive serial console
+	// In a real implementation, this might need to handle the interactive session
+	_, err := c.execVirsh(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to connect to serial console for VM '%s': %w", vmName, err)
+	}
+
+	return nil
+}
+
+// GetVNCConnectionString returns a connection string for VNC clients
+func (c *Client) GetVNCConnectionString(vmName string) (string, error) {
+	consoleInfo, err := c.GetConsoleInfo(vmName)
+	if err != nil {
+		return "", err
+	}
+
+	if consoleInfo.Protocol != "VNC" {
+		return "", fmt.Errorf("VNC not available for VM '%s'", vmName)
+	}
+
+	// Return connection string in format suitable for VNC clients
+	if consoleInfo.VNCHost != "" && consoleInfo.VNCPort > 0 {
+		return fmt.Sprintf("%s:%d", consoleInfo.VNCHost, consoleInfo.VNCPort), nil
+	}
+
+	if consoleInfo.VNCDisplay != "" {
+		return fmt.Sprintf("localhost%s", consoleInfo.VNCDisplay), nil
+	}
+
+	return "", fmt.Errorf("incomplete VNC connection information for VM '%s'", vmName)
+}
