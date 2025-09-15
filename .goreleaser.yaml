@@ -83,37 +83,10 @@ brews:
     test: |
       system "#{bin}/qnap-vm version"
 
-dockers:
-  - image_templates:
-      - "ghcr.io/scttfrdmn/qnap-vm:{{ .Version }}-amd64"
-      - "ghcr.io/scttfrdmn/qnap-vm:latest-amd64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-  - image_templates:
-      - "ghcr.io/scttfrdmn/qnap-vm:{{ .Version }}-arm64"
-      - "ghcr.io/scttfrdmn/qnap-vm:latest-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-    goarch: arm64
-
-docker_manifests:
-  - name_template: "ghcr.io/scttfrdmn/qnap-vm:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/scttfrdmn/qnap-vm:{{ .Version }}-amd64"
-      - "ghcr.io/scttfrdmn/qnap-vm:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/scttfrdmn/qnap-vm:latest"
-    image_templates:
-      - "ghcr.io/scttfrdmn/qnap-vm:latest-amd64"
-      - "ghcr.io/scttfrdmn/qnap-vm:latest-arm64"
+# Docker builds disabled for now due to multi-arch complexity
+# Will be re-enabled in future release
+# dockers:
+#   - image_templates:
+#       - "ghcr.io/scttfrdmn/qnap-vm:{{ .Version }}"
+#       - "ghcr.io/scttfrdmn/qnap-vm:latest"
+#     dockerfile: Dockerfile
