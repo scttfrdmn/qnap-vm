@@ -8,7 +8,7 @@ before:
 builds:
   - id: qnap-vm
     binary: qnap-vm
-    main: ./cmd/qnap-vm
+    main: ./cmd/qnap-vm/main.go
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -69,7 +69,7 @@ brews:
       name: homebrew-qnap-vm
       branch: main
       token: "{{ .Env.GITHUB_TOKEN }}"
-    folder: Formula
+    directory: Formula
     homepage: https://github.com/scttfrdmn/qnap-vm
     description: "A command-line tool for managing virtual machines on QNAP devices with Virtualization Station"
     license: MIT
