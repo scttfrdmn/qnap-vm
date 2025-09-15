@@ -63,6 +63,50 @@ go install github.com/scttfrdmn/qnap-vm/cmd/qnap-vm@latest
 - SSH access to QNAP device
 - Network connectivity to QNAP device
 
+## Testing
+
+qnap-vm follows the same rigorous testing approach as qnap-docker, with comprehensive testing against real QNAP hardware.
+
+### Unit Tests
+
+Run standard unit tests:
+```bash
+make test
+make test-coverage  # with coverage report
+```
+
+### Integration Tests
+
+**Real hardware testing** against actual QNAP devices:
+
+```bash
+# Required: Set your QNAP device details
+export NAS_HOST=your-qnap.local
+export NAS_USER=admin  # optional, defaults to 'admin'
+
+# Run integration tests
+make integration-test
+
+# Run with coverage reporting
+make integration-test-full
+```
+
+**Integration test coverage:**
+- ✅ SSH connection and authentication
+- ✅ Virtualization Station availability
+- ✅ Storage pool detection and management
+- ✅ Complete VM lifecycle (create, start, stop, delete)
+- ✅ VM configuration validation
+- ✅ Resource management and cleanup
+
+**Requirements:**
+- QNAP NAS with Virtualization Station installed
+- QTS 5.1.0+ or QuTS hero h5.1.0+
+- SSH access enabled
+- Intel VT-x or AMD-V CPU support
+
+See [tests/integration/README.md](tests/integration/README.md) for detailed integration testing documentation.
+
 ## Development Roadmap
 
 ### Phase 1: Core VM Lifecycle (v0.1.0)

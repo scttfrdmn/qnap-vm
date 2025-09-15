@@ -277,15 +277,18 @@ func (m *Manager) CreateVMDiskPath(pool *Pool, vmName string) string {
 
 // CreateVMDisk creates a disk image for a VM
 func (m *Manager) CreateVMDisk(diskPath, size string) error {
-	// Use qemu-img to create the disk image
-	// We'll need to determine if qemu-img is available in the QVS/KVM path
-	possiblePaths := []string{"/QVS/usr/bin", "/KVM/usr/bin"}
+	// Use qemu-img to create the disk image with proper library path
+	possibleBasePaths := []string{"/QVS", "/KVM"}
 
 	var qemuImgPath string
-	for _, path := range possiblePaths {
-		testCmd := fmt.Sprintf("test -x %s/qemu-img && echo 'found'", path)
+	var libPath string
+
+	for _, basePath := range possibleBasePaths {
+		binPath := fmt.Sprintf("%s/usr/bin", basePath)
+		testCmd := fmt.Sprintf("test -x %s/qemu-img && echo 'found'", binPath)
 		if output, err := m.sshClient.Execute(testCmd); err == nil && strings.Contains(output, "found") {
-			qemuImgPath = fmt.Sprintf("%s/qemu-img", path)
+			qemuImgPath = fmt.Sprintf("%s/qemu-img", binPath)
+			libPath = fmt.Sprintf("%s/usr/lib:%s/usr/lib64", basePath, basePath)
 			break
 		}
 	}
@@ -294,8 +297,12 @@ func (m *Manager) CreateVMDisk(diskPath, size string) error {
 		return fmt.Errorf("qemu-img not found in expected paths")
 	}
 
-	// Create the disk image
-	cmd := fmt.Sprintf("%s create -f qcow2 %s %s", qemuImgPath, diskPath, size)
+	// Create the disk image with proper library path
+	cmd := fmt.Sprintf(`
+		export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH
+		%s create -f qcow2 %s %s
+	`, libPath, qemuImgPath, diskPath, size)
+
 	output, err := m.sshClient.Execute(cmd)
 	if err != nil {
 		return fmt.Errorf("failed to create disk image: %w\nOutput: %s", err, output)

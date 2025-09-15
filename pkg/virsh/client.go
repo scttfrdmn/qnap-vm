@@ -30,6 +30,7 @@ type VMInfo struct {
 // VMDomain represents a libvirt domain XML structure (simplified)
 type VMDomain struct {
 	XMLName xml.Name `xml:"domain"`
+	Type    string   `xml:"type,attr"`
 	Name    string   `xml:"name"`
 	UUID    string   `xml:"uuid,omitempty"`
 	Memory  struct {
@@ -51,6 +52,7 @@ type VMDomain struct {
 		} `xml:"boot"`
 	} `xml:"os"`
 	Devices struct {
+		Emulator string `xml:"emulator,omitempty"`
 		Disk []struct {
 			Type   string `xml:"type,attr"`
 			Device string `xml:"device,attr"`
@@ -244,6 +246,7 @@ type VMConfig struct {
 // generateDomainXML generates libvirt domain XML for a VM
 func (c *Client) generateDomainXML(name string, config VMConfig) (string, error) {
 	domain := VMDomain{}
+	domain.Type = "qemu"
 	domain.Name = name
 
 	// Set memory (convert MB to KB for libvirt)
@@ -259,6 +262,9 @@ func (c *Client) generateDomainXML(name string, config VMConfig) (string, error)
 	domain.OS.Type.Machine = "pc-i440fx-2.3"
 	domain.OS.Type.Value = "hvm"
 	domain.OS.Boot.Dev = "hd"
+
+	// Set emulator path for QNAP
+	domain.Devices.Emulator = fmt.Sprintf("%s/usr/bin/qemu-system-x86_64", c.qvsPath)
 
 	// Add disk
 	if config.DiskPath != "" {
@@ -282,7 +288,7 @@ func (c *Client) generateDomainXML(name string, config VMConfig) (string, error)
 		domain.Devices.Disk = append(domain.Devices.Disk, disk)
 	}
 
-	// Add network interface
+	// Add network interface (use user network to avoid bridge issues)
 	netInterface := struct {
 		Type   string `xml:"type,attr"`
 		Source struct {
@@ -292,9 +298,8 @@ func (c *Client) generateDomainXML(name string, config VMConfig) (string, error)
 			Type string `xml:"type,attr"`
 		} `xml:"model"`
 	}{
-		Type: "bridge",
+		Type: "user", // Use user networking instead of bridge for QNAP compatibility
 	}
-	netInterface.Source.Bridge = "virbr0" // Default bridge
 	netInterface.Model.Type = "virtio"
 	domain.Devices.Interface = append(domain.Devices.Interface, netInterface)
 

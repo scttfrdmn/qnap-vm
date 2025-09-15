@@ -66,6 +66,23 @@ dev-setup:
 	go mod download
 	go mod tidy
 
+# Run integration tests (requires QNAP hardware)
+.PHONY: integration-test
+integration-test:
+ifndef NAS_HOST
+	$(error NAS_HOST environment variable is required for integration tests)
+endif
+	cd tests/integration && go test -timeout 10m -integration .
+
+# Run integration tests with coverage
+.PHONY: integration-test-full
+integration-test-full:
+ifndef NAS_HOST
+	$(error NAS_HOST environment variable is required for integration tests)
+endif
+	cd tests/integration && go test -timeout 10m -integration -coverprofile=../../integration_coverage.out .
+	go tool cover -html=integration_coverage.out -o integration_coverage.html
+
 # Run the binary
 .PHONY: run
 run: build
@@ -75,15 +92,22 @@ run: build
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  build        Build the binary"
-	@echo "  build-all    Build for all platforms"
-	@echo "  test         Run tests"
-	@echo "  test-coverage Run tests with coverage report"
-	@echo "  clean        Clean build artifacts"
-	@echo "  fmt          Format code"
-	@echo "  vet          Run go vet"
-	@echo "  check        Run all quality checks"
-	@echo "  install      Install the binary system-wide"
-	@echo "  dev-setup    Set up development environment"
-	@echo "  run          Build and run the binary"
-	@echo "  help         Display this help message"
+	@echo "  build                Build the binary"
+	@echo "  build-all           Build for all platforms"
+	@echo "  test                Run unit tests"
+	@echo "  test-coverage       Run tests with coverage report"
+	@echo "  integration-test    Run integration tests against real QNAP hardware"
+	@echo "  integration-test-full Run integration tests with coverage"
+	@echo "  clean               Clean build artifacts"
+	@echo "  fmt                 Format code"
+	@echo "  vet                 Run go vet"
+	@echo "  check               Run all quality checks"
+	@echo "  install             Install the binary system-wide"
+	@echo "  dev-setup           Set up development environment"
+	@echo "  run                 Build and run the binary"
+	@echo "  help                Display this help message"
+	@echo ""
+	@echo "Integration test environment variables:"
+	@echo "  NAS_HOST            QNAP device hostname/IP (required)"
+	@echo "  NAS_USER            SSH username (default: admin)"
+	@echo "  NAS_SSH_KEY         Path to SSH private key (optional)"

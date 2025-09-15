@@ -53,6 +53,48 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
+  integration-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[integration]'))
+    strategy:
+      matrix:
+        go-version: [1.24]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Run integration tests
+      env:
+        NAS_HOST: ${{ secrets.QNAP_TEST_HOST }}
+        NAS_USER: ${{ secrets.QNAP_TEST_USER }}
+        NAS_SSH_KEY: ${{ secrets.QNAP_SSH_KEY_PATH }}
+      run: |
+        if [ -z "$NAS_HOST" ]; then
+          echo "⚠️ Integration tests skipped - QNAP_TEST_HOST secret not configured"
+          echo "To enable integration tests:"
+          echo "1. Add QNAP_TEST_HOST secret with your QNAP device hostname"
+          echo "2. Add QNAP_TEST_USER secret with SSH username (optional, defaults to 'admin')"
+          echo "3. Add QNAP_SSH_KEY_PATH secret with SSH key path (optional)"
+          exit 0
+        fi
+        make integration-test
+
+    - name: Upload integration coverage
+      if: env.NAS_HOST != ''
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./integration_coverage.out
+        flags: integration
+        name: codecov-integration
+
   build:
     runs-on: ubuntu-latest
     needs: test

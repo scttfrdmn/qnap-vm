@@ -13,6 +13,9 @@ coverage.html
 integration_coverage.out
 integration_coverage.html
 
+# Integration test artifacts
+tests/integration/go.sum
+
 # Test binary, built with `go test -c`
 *.test
 
