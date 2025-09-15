@@ -4,12 +4,14 @@ A command-line tool for managing virtual machines on QNAP devices with Virtualiz
 
 ## Features
 
-- **VM Lifecycle Management**: Create, start, stop, and delete virtual machines
-- **SSH-based Connection**: Secure remote management of QNAP devices
-- **libvirt Integration**: Built on proven virtualization technologies
-- **Template Support**: Pre-configured VM templates for common use cases
-- **Storage Management**: Intelligent detection and management of QNAP storage pools
-- **Cross-platform**: Works on macOS, Linux, and Windows
+- **Complete VM Lifecycle**: Create, start, stop, delete, list, and monitor virtual machines
+- **Advanced Snapshots**: Full snapshot management with create, restore, list, and delete operations
+- **Resource Monitoring**: Real-time CPU, memory, disk I/O, and network statistics with watch mode
+- **VM Cloning**: Full and linked VM cloning with automatic configuration inheritance
+- **Console Access**: VNC and serial console support with connection guidance and SSH tunneling
+- **SSH Integration**: Secure remote management with key authentication and ssh-agent support
+- **Smart Storage**: Intelligent detection and management of QNAP storage pools (CACHEDEV, ZFS, USB)
+- **Cross-platform**: Works on macOS, Linux, Windows, and Docker environments
 
 ## Installation
 
