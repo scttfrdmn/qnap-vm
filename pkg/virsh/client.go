@@ -1,3 +1,4 @@
+// Package virsh provides libvirt/virsh integration for VM management on QNAP devices.
 package virsh
 
 import (

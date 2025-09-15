@@ -1,3 +1,4 @@
+// Package storage provides storage pool detection and management for QNAP devices.
 package storage
 
 import (

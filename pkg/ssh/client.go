@@ -1,3 +1,4 @@
+// Package ssh provides SSH client functionality for connecting to QNAP devices.
 package ssh
 
 import (

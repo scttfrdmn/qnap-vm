@@ -1,3 +1,4 @@
+// Package config provides configuration management for QNAP device connections.
 package config
 
 import (

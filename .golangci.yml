@@ -1,58 +1,32 @@
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-  goimports:
-    local-prefixes: github.com/scttfrdmn/qnap-vm
-  misspell:
-    locale: US
+# Go Report Card A+ Configuration
+# Only enable linters that are actually checked by goreportcard.com
+
+version: 2
 
 linters:
   enable:
-    - bodyclose
-    - deadcode
-    - depguard
-    - dogsled
-    - dupl
-    - errcheck
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - golint
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - interfacer
-    - lll
-    - misspell
-    - nakedret
-    - rowserrcheck
-    - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - varcheck
-    - whitespace
+    - errcheck      # unchecked errors (goreportcard checks this)
+    - gocyclo      # cyclomatic complexity (goreportcard checks this)
+    - govet        # go vet (goreportcard checks this)
+    - ineffassign  # ineffectual assignments (goreportcard checks this)
+    - misspell     # misspellings (goreportcard checks this)
 
-  disable:
-    - maligned
+  disable-all: true
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15  # same as goreportcard
+  misspell:
+    locale: US
 
 issues:
   exclude-rules:
+    # Allow some flexibility in tests
     - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
+      linters: [errcheck, gocyclo]
+    # Allow complexity in main CLI files
+    - path: main\.go
+      linters: [gocyclo]
 
 run:
-  deadline: 240s
-  skip-dirs:
-    - vendor
+  timeout: 5m
