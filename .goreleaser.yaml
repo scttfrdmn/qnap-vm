@@ -8,7 +8,7 @@ before:
 builds:
   - id: qnap-vm
     binary: qnap-vm
-    main: ./cmd/qnap-vm/main.go
+    main: ./cmd/qnap-vm
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
