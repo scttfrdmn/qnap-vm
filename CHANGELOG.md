@@ -8,11 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned for Phase 3 (v0.3.0)
-- VM template system with marketplace integration
-- Automated VM provisioning with cloud-init
-- Bulk operations for multi-VM management
-- Export/import VM configurations (OVF/OVA)
-- Infrastructure as Code with YAML/JSON configs
+- Bulk VM operations (start/stop/delete multiple VMs)
+- VM configuration export/import (backup and restore)
+- Automated VM provisioning with scripts
+- Scheduled operations and VM lifecycle automation
+- Multi-VM management and orchestration
 
 ### Planned for Phase 4 (v0.4.0)
 - Live migration between QNAP hosts

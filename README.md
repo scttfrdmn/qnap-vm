@@ -154,13 +154,13 @@ See [tests/integration/README.md](tests/integration/README.md) for detailed inte
 - [x] VM cloning capabilities with configuration inheritance
 - [x] VM console access (VNC/serial) with connection guidance
 
-### Phase 3: Templates and Automation (v0.3.0)
-- [ ] VM template system with marketplace integration
-- [ ] Automated VM provisioning with cloud-init
-- [ ] Bulk operations for multi-VM management
-- [ ] Export/import VM configurations (OVF/OVA)
-- [ ] Infrastructure as Code with YAML/JSON configs
-- [ ] Scheduled VM operations and automation
+### Phase 3: Automation and Bulk Operations (v0.3.0)
+- [ ] Bulk VM operations (start/stop/delete multiple VMs)
+- [ ] VM configuration export/import (backup and restore)
+- [ ] Automated VM provisioning with scripts
+- [ ] Scheduled operations and VM lifecycle automation
+- [ ] Multi-VM management and orchestration
+- [ ] Configuration profiles for common VM setups
 
 ### Phase 4: Storage and Networking (v0.4.0)
 - [ ] Live migration between QNAP hosts with resource validation
