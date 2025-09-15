@@ -13,6 +13,12 @@ A command-line tool for managing virtual machines on QNAP devices with Virtualiz
 
 ## Installation
 
+### Homebrew (macOS/Linux)
+
+```bash
+brew install scttfrdmn/qnap-vm/qnap-vm
+```
+
 ### From Release
 
 Download the latest release from [GitHub Releases](https://github.com/scttfrdmn/qnap-vm/releases).
